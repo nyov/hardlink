@@ -187,7 +187,10 @@ class HardLink(object):
             for root, _, files in os.walk(top):
                 for fname in files:
                     fpath = os.path.join(root, fname)
-                    if any(pat.search(fpath) for pat in self.opts.exclude):
+                    exc = any(pat.search(fpath) for pat in self.opts.exclude)
+                    inc = any(pat.search(fpath) for pat in self.opts.include)
+                    if ((self.opts.exclude and exc and not inc) or
+                        (self.opts.include and not inc)):
                         continue
                     try:
                         mfile = File(fpath, self.opts)
@@ -207,7 +210,7 @@ def parse_args():
                       help="Modify nothing, just print what would happen")
     parser.add_option("-f", "--respect-name", action="store_true",
                       help="Filenames have to be identical", dest='samename')
-    parser.add_option("-i", "--ignore-mode", dest="mode", default=True,
+    parser.add_option("-p", "--ignore-mode", dest="mode", default=True,
                       action="store_false", help="Ignore changes of file mode")
     parser.add_option("-o", "--ignore-owner", action="store_false",
                       dest="owner", default=True, help="Ignore owner changes")
@@ -221,12 +224,15 @@ def parse_args():
     parser.add_option('-x', '--exclude', metavar='REGEXP', action='append',
                       help='Regular expression to exclude files/dirs',
                       default=[])
-
+    parser.add_option('-i', '--include', metavar='REGEXP', action='append',
+                      help='Regular expression to include files/dirs',
+                      default=[])
 
     # Parse the arguments
     opts, args = parser.parse_args()
     # Compile the regular expressions, should speedup matching a bit.
     opts.exclude = tuple(re.compile(pat) for pat in opts.exclude)
+    opts.include = tuple(re.compile(pat) for pat in opts.include)
     return opts, args
 
 
