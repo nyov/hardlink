@@ -28,12 +28,13 @@ but some options have changed or are not available anymore.
 
 import os
 import re
+import sys
+import time
 from collections import defaultdict
 from optparse import OptionParser
 from stat import S_ISREG
 
 BUFFER_SIZE = 1048576
-
 
 class File(object):
     '''Represent a file or hardlink
@@ -52,12 +53,13 @@ class File(object):
     the commandline.
     '''
 
-    __slots__ = 'path', 'hash', 'isreg', 'link_count', 'stat', 'opts'
+    __slots__ = 'path', 'hash', 'isreg', 'link_count', 'stat', 'opts', 'linker'
 
-    def __init__(self, fname, opts):
+    def __init__(self, fname, opts, linker):
         self.path = fname
         self.opts = opts
         self.stat = os.stat(fname)
+        self.linker = linker
         self.isreg = S_ISREG(self.stat.st_mode)
         self.link_count = self.stat.st_nlink
         self.hash = ((opts.mode and self.stat.st_mode), # Same mode
@@ -70,6 +72,9 @@ class File(object):
 
     def same_content(self, other):
         '''Return whether to files have identical content'''
+        self.linker.compared += 1
+        if self.opts.verbose >= 2:
+            print 'Comparing', self.path, 'to', other.path
         self_f = open(self.path, 'rb')
         other_f = open(other.path, 'rb')
         try:
@@ -122,10 +127,14 @@ class File(object):
             if not self.opts.dry_run:
                 os.unlink(backup)
             else:
-                print '[DryRun]',
-            print 'Link: %s => %s (-%d bytes)' % (self.path, other.path,
-                                                 self.stat.st_size)
+                if self.opts.verbose:
+                    print '[DryRun]',
+            if self.opts.verbose:
+                print 'Link: %s => %s (-%s)' % (self.path, other.path,
+                                                     format(self.stat.st_size))
             other.link_count = self.link_count = self.link_count + 1
+            self.linker.linked += 1
+            self.linker.saved += self.stat.st_size
             return True
 
     def optlink(self, other):
@@ -152,10 +161,23 @@ class HardLink(object):
     recurse into the other ones.'''
 
     def __init__(self, dirs, opts):
+        self.start = time.time()
         self._dirs = dirs
         self.opts = opts
+        self.compared = 0
+        self.linked = 0
+        self.saved = 0
         self.files = self.get_files()
         self.divide_and_conquer()
+        self.print_stats()
+
+    def print_stats(self):
+        '''Print the statistics at the end of the run'''
+        print 'Mode:    ', self.opts.dry_run and 'dry-run' or 'real'
+        print 'Linked:  ', self.linked, 'files'
+        print 'Compared:', self.compared, 'files'
+        print 'Saved:   ', format(self.saved)
+        print 'Duration: %.2f seconds' % (time.time() - self.start)
 
     def divide_and_conquer(self):
         '''Divide and Conquer linking'''
@@ -181,7 +203,7 @@ class HardLink(object):
                 files = remaining and iter(remaining)
 
     def get_files(self):
-        '''Return a dict like {"directory": [File(...)]}'''
+        '''Return a dict like {'directory': [File(...)]}'''
         retfiles = defaultdict(list)
         for top in self._dirs:
             for root, _, files in os.walk(top):
@@ -193,7 +215,7 @@ class HardLink(object):
                         (self.opts.include and not inc)):
                         continue
                     try:
-                        mfile = File(fpath, self.opts)
+                        mfile = File(fpath, self.opts, self)
                         if mfile.isreg:
                             retfiles[mfile.hash].append(mfile)
                         del mfile
@@ -202,23 +224,37 @@ class HardLink(object):
         return retfiles
 
 
+def format(bytes):
+    '''Format a size, given in bytes'''
+    bytes = float(bytes)
+    if (bytes / 1024**3 ) >= 1:
+        return "%.2f GiB" % (bytes/1024**3)
+    elif (bytes / 1024**2 ) >= 1:
+        return "%.2f MiB" % (bytes/1024**2)
+    elif (bytes / 1024 ) >= 1:
+        return "%.2f KiB" % (bytes/1024)
+    else:
+        return "%d bytes" % bytes
+
+
 def parse_args():
     '''Parse the command-line options'''
-    parser = OptionParser(version="hardlink 0.1")
+    parser = OptionParser(usage='%prog [options] directory ...',
+                          version='hardlink 0.1')
 
-    parser.add_option("-n", "--dry-run", action="store_true",
-                      help="Modify nothing, just print what would happen")
-    parser.add_option("-f", "--respect-name", action="store_true",
-                      help="Filenames have to be identical", dest='samename')
-    parser.add_option("-p", "--ignore-mode", dest="mode", default=True,
-                      action="store_false", help="Ignore changes of file mode")
-    parser.add_option("-o", "--ignore-owner", action="store_false",
-                      dest="owner", default=True, help="Ignore owner changes")
-    parser.add_option("-t", "--ignore-time", action="store_false",
-                      dest="timestamp", default=True, help="Ignore timestamps")
-    parser.add_option('-m', '--maximize', action="store_true",
-                      help="Maximize the hardlink count, remove the file with "
-                      "lowest hardlink cout")
+    parser.add_option('-n', '--dry-run', action='store_true',
+                      help='Modify nothing, just print what would happen')
+    parser.add_option('-f', '--respect-name', action='store_true',
+                      help='Filenames have to be identical', dest='samename')
+    parser.add_option('-p', '--ignore-mode', dest='mode', default=True,
+                      action='store_false', help='Ignore changes of file mode')
+    parser.add_option('-o', '--ignore-owner', action='store_false',
+                      dest='owner', default=True, help='Ignore owner changes')
+    parser.add_option('-t', '--ignore-time', action='store_false',
+                      dest='timestamp', default=True, help='Ignore timestamps')
+    parser.add_option('-m', '--maximize', action='store_true',
+                      help='Maximize the hardlink count, remove the file with '
+                      'lowest hardlink cout')
     parser.add_option('-M', '--minimize', action='store_false', dest='max',
                       help='Reverse the meaning of -m')
     parser.add_option('-x', '--exclude', metavar='REGEXP', action='append',
@@ -227,9 +263,14 @@ def parse_args():
     parser.add_option('-i', '--include', metavar='REGEXP', action='append',
                       help='Regular expression to include files/dirs',
                       default=[])
+    parser.add_option('-v', '--verbose', action='count', default=0,
+                      help='Increase verbosity (repeat for more verbosity)')
 
     # Parse the arguments
     opts, args = parser.parse_args()
+    if not args:
+        print >> sys.stderr, 'Error: You must specify at least one directory'
+        sys.exit(1)
     # Compile the regular expressions, should speedup matching a bit.
     opts.exclude = tuple(re.compile(pat) for pat in opts.exclude)
     opts.include = tuple(re.compile(pat) for pat in opts.include)
