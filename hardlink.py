@@ -36,6 +36,7 @@ from stat import S_ISREG
 
 BUFFER_SIZE = 1048576
 
+
 class File(object):
     '''Represent a file or hardlink
 
@@ -227,11 +228,11 @@ class HardLink(object):
 def format(bytes):
     '''Format a size, given in bytes'''
     bytes = float(bytes)
-    if (bytes / 1024**3 ) >= 1:
+    if (bytes / 1024**3) >= 1:
         return "%.2f GiB" % (bytes/1024**3)
-    elif (bytes / 1024**2 ) >= 1:
+    elif (bytes / 1024**2) >= 1:
         return "%.2f MiB" % (bytes/1024**2)
-    elif (bytes / 1024 ) >= 1:
+    elif (bytes / 1024) >= 1:
         return "%.2f KiB" % (bytes/1024)
     else:
         return "%d bytes" % bytes
@@ -241,7 +242,8 @@ def parse_args():
     '''Parse the command-line options'''
     parser = OptionParser(usage='%prog [options] directory ...',
                           version='hardlink 0.1')
-
+    parser.add_option('-v', '--verbose', action='count', default=0,
+                      help='Increase verbosity (repeat for more verbosity)')
     parser.add_option('-n', '--dry-run', action='store_true',
                       help='Modify nothing, just print what would happen')
     parser.add_option('-f', '--respect-name', action='store_true',
@@ -263,8 +265,6 @@ def parse_args():
     parser.add_option('-i', '--include', metavar='REGEXP', action='append',
                       help='Regular expression to include files/dirs',
                       default=[])
-    parser.add_option('-v', '--verbose', action='count', default=0,
-                      help='Increase verbosity (repeat for more verbosity)')
 
     # Parse the arguments
     opts, args = parser.parse_args()
