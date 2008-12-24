@@ -1,0 +1,59 @@
+.\" Copyright (C) 2008 Julian Andres Klode. See hardlink.py for license.
+.TH hardlink 1 "2008-12-24" "0.1.0"
+.SH NAME
+hardlink \- Link multiple copies of a file
+.SH SYNOPSIS
+.B hardlink
+.RI [ option ]...
+.RI [ directory ]...
+.SH DESCRIPTION
+.B hardlink
+is a tool which replaces copies of a file with hardlinks, therefore saving
+space.
+.SH OPTIONS
+.TP
+.B \-h or \-\-help
+print quick usage details to the screen.
+.TP
+.B \-v or \-\-verbose
+More verbose output. If specified once, every hardlinked file is displayed,
+if specified twice, it also shows every comparison.
+.TP
+.B \-n or \-\-dry\-run
+Do not act, just print what would happen
+.TP
+.B \-f or \-\-respect\-name
+Only try to link files with the same (basename).
+.TP
+.B \-p or \-\-ignore\-mode
+Link/compare files even if their mode is different. This may be a bit unpredictable.
+.TP
+.B \-o or \-\-ignore\-owner
+Link/compare files even if their owner (user and group) is different. It is not
+predictable
+.TP
+.B \-t or \-\-ignore\-time
+Link/compare files even if their time of modification has changed.
+.TP
+.B \-m or \-\-maximize
+Try to maximize the link count of the files.
+.TP
+.B \-M or \-\-minimize
+Try to minimize the link count of the files.
+.TP
+.B \-x or \-\-exclude
+A regular expression which excludes files from being compared and linked.
+.TP
+.B \-i or \-\-include
+A regular expression to include files. If the option \-\-exclude has been given,
+this option re-includes files which would otherwise be excluded. If the option
+is used without \-\-exclude, only files matched by the pattern are included.
+
+.SH ARGUMENTS
+.B hardlink
+takes one or more directories which will be searched for files to be linked.
+
+.SH AUTHOR
+The program hardlink and this manpage have been written by Julian Andres Klode,
+and are licensed under the MIT license. See the code of hardlink for further
+information.
