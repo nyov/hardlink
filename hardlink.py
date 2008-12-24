@@ -26,6 +26,7 @@ This program is partially compatible to http://code.google.com/p/hardlinkpy/,
 but some options have changed or are not available anymore.
 '''
 
+import filecmp
 import os
 import re
 import sys
@@ -33,8 +34,6 @@ import time
 from collections import defaultdict
 from optparse import OptionParser
 from stat import S_ISREG
-
-BUFFER_SIZE = 1048576
 
 
 class File(object):
@@ -73,22 +72,10 @@ class File(object):
 
     def same_content(self, other):
         '''Return whether to files have identical content'''
-        self.linker.compared += 1
         if self.opts.verbose >= 2:
             print 'Comparing', self.path, 'to', other.path
-        self_f = open(self.path, 'rb')
-        other_f = open(other.path, 'rb')
-        try:
-            while True:
-                self_content = self_f.read(BUFFER_SIZE)
-                other_content = other_f.read(BUFFER_SIZE)
-                if self_content != other_content:
-                    return False
-                elif not self_content:
-                    return True
-        finally:
-            self_f.close()
-            other_f.close()
+        self.linker.compared += 1
+        return filecmp.cmp(self.path, other.path, 0)
 
     def may_link_to(self, other):
         '''Returns True if the file may be linked to another one.
