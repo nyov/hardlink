@@ -31,6 +31,7 @@ import os
 import re
 import sys
 import time
+
 from collections import defaultdict
 from optparse import OptionParser
 from stat import S_ISREG
@@ -75,7 +76,11 @@ class File(object):
         if self.opts.verbose >= 2:
             print 'Comparing', self.path, 'to', other.path
         self.linker.compared += 1
-        return filecmp.cmp(self.path, other.path, 0)
+        try:
+            return filecmp.cmp(self.path, other.path, 0)
+        except EnvironmentError, exc:
+            print 'Error: Comparing %s to %s failed' % (self.path, other.path)
+            print '      ', exc
 
     def may_link_to(self, other):
         '''Returns True if the file may be linked to another one.
@@ -161,6 +166,7 @@ class HardLink(object):
     def print_stats(self):
         '''Print the statistics at the end of the run'''
         print 'Mode:    ', self.opts.dry_run and 'dry-run' or 'real'
+        print 'Files:   ', sum(len(files) for files in self.files.itervalues())
         print 'Linked:  ', self.linked, 'files'
         print 'Compared:', self.compared, 'files'
         print 'Saved:   ', format(self.saved)
