@@ -58,7 +58,7 @@ class File(object):
     def __init__(self, fname, opts, linker):
         self.path = fname
         self.opts = opts
-        self.stat = os.stat(fname)
+        self.stat = os.lstat(fname)
         self.linker = linker
         self.isreg = S_ISREG(self.stat.st_mode)
         self.link_count = self.stat.st_nlink
