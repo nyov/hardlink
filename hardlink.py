@@ -127,9 +127,8 @@ class File(object):
         else:
             if not self.opts.dry_run:
                 os.unlink(backup)
-            else:
-                if self.opts.verbose:
-                    print '[DryRun]',
+            elif self.opts.verbose:
+                print '[DryRun]',
             if self.opts.verbose:
                 print 'Link: %s => %s (-%s)' % (self.path, other.path,
                                                      format(self.stat.st_size))
@@ -254,7 +253,7 @@ def parse_args():
                       dest='owner', default=True, help='Ignore owner changes')
     parser.add_option('-t', '--ignore-time', action='store_false',
                       dest='timestamp', default=True, help='Ignore timestamps')
-    parser.add_option('-m', '--maximize', action='store_true',
+    parser.add_option('-m', '--maximize', action='store_true', dest='max',
                       help='Maximize the hardlink count, remove the file with '
                       'lowest hardlink cout')
     parser.add_option('-M', '--minimize', action='store_false', dest='max',
