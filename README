@@ -4,10 +4,22 @@ hardlink is a tool which replaces multiple copies of a file with hardlinks.
 Inspiration came from http://code.google.com/p/hardlinkpy/, but no code has
 been used.
 
-I started from scratch because the original code was just to hard to read, to
-old, supported even Python 1.5, and did not conform to PEP 8. In contrast,
-this code conforms to PEP 8 and passes pylint and pychecker without any kind
-of information (e.g. warnings) being displayed.
+I started from scratch because hardlinkpy lacks a consistent style and does
+not conform to PEP 8. Furthermore, it supports Python 1.5, which means no
+new functionality is used.
+
+My program requires at least Python 2.5, passes all known python checking
+tools (pylint,pychecker,pyflakes) without errors/warnings/information, and is
+compatible with Python 3.0 (after using 2to3).
+
+Installation
+------------
+To install hardlink into /usr, run make install.
+
+DESTDIR - May be set to another root system (useful for packaging)
+PREFIX  - Normally usr, may be changed to usr/local
+MANDIR  - Normally $(PREFIX)/share/man (some systems may use $(PREFIX)/man)
+BINDIR  - Normally $(PREFIX)/bin
 
 Differences to hardlinkpy
 -------------------------
@@ -19,13 +31,12 @@ Differences to hardlinkpy
  --timestamp-ignore has been renamed to --ignore-time
  --owner-ignore has been renamed to --ignore-owner
  --rights-ignore has been renamed to --ignore-mode
- --filenames-equal has been renamed to --respect-filename
+ --filenames-equal has been renamed to --respect-name
 
  The option --reverse has been renamed to --minimize. The option --max has
  been renamed to --maximize.
 
- At the moment, no verbose mode is supported and the output is different. This
- may change at a later point.
+ At the moment, output is different. This may change at a later point.
 
 Licensing
 ---------
