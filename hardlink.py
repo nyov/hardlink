@@ -117,8 +117,8 @@ class File(object):
             elif self.opts.verbose:
                 print '[DryRun]',
             if self.opts.verbose:
-                print 'Link: %s => %s (-%s)' % (self.path, other.path,
-                                                     format(self.stat.st_size))
+                print 'Linking %s to %s (-%s)' % (self.path, other.path,
+                                                  format(self.stat.st_size))
             other.link_count = self.link_count = self.link_count + 1
             self.linker.linked += 1
             self.linker.saved += self.stat.st_size
@@ -214,11 +214,11 @@ class HardLink(object):
 def format(bytes):
     '''Format a size, given in bytes'''
     bytes = float(bytes)
-    if (bytes / 1024**3) >= 1:
+    if bytes >= 1024**3:
         return "%.2f GiB" % (bytes/1024**3)
-    elif (bytes / 1024**2) >= 1:
+    elif bytes >= 1024**2:
         return "%.2f MiB" % (bytes/1024**2)
-    elif (bytes / 1024) >= 1:
+    elif bytes >= 1024:
         return "%.2f KiB" % (bytes/1024)
     else:
         return "%d bytes" % bytes
