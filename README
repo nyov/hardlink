@@ -16,29 +16,30 @@ Installation
 ------------
 To install hardlink into /usr, run make install.
 
-DESTDIR - May be set to another root system (useful for packaging)
-PREFIX  - Normally usr, may be changed to usr/local
-MANDIR  - Normally $(PREFIX)/share/man (some systems may use $(PREFIX)/man)
-BINDIR  - Normally $(PREFIX)/bin
+ * DESTDIR - May be set to another root system (useful for packaging)
+ * PREFIX  - Normally usr, may be changed to usr/local
+ * MANDIR  - Normally $(PREFIX)/share/man (some systems may use $(PREFIX)/man)
+ * BINDIR  - Normally $(PREFIX)/bin
 
 Differences to hardlinkpy
 -------------------------
- For users of hardlinkpy, several things are different. One of the most
- important changes is the renaming of all --foo-ignore arguments to
- --ignore-foo ones. This is more similar to the naming of options in GNU
- programs.
+For users of hardlinkpy, several things are different. One of the most
+important changes is the renaming of all --foo-ignore arguments to
+--ignore-foo ones. This is more similar to the naming of options in GNU
+programs.
 
- --timestamp-ignore has been renamed to --ignore-time
- --owner-ignore has been renamed to --ignore-owner
- --rights-ignore has been renamed to --ignore-mode
- --filenames-equal has been renamed to --respect-name
+* --timestamp-ignore has been renamed to --ignore-time
+* --owner-ignore has been renamed to --ignore-owner
+* --rights-ignore has been renamed to --ignore-mode
+* --filenames-equal has been renamed to --respect-name
 
- The option --reverse has been renamed to --minimize. The option --max has
- been renamed to --maximize.
+The option --reverse has been renamed to --minimize. The option --max has
+been renamed to --maximize.
 
- At the moment, output is different. This may change at a later point.
+At the moment, output is different. This may change at a later point.
 
 Licensing
 ---------
 hardlink is published under the terms of the MIT license. See the source code
 for more information. This file is subject to the same licensing terms.
+
