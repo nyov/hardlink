@@ -1,0 +1,19 @@
+Source: hardlink
+Section: utils
+Priority: optional
+Maintainer: Julian Andres Klode <jak@debian.org>
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.8.0
+Homepage: http://jak-linux.org/projects/hardlink/
+Vcs-Git: git://git.debian.org/git/users/jak/hardlink.git
+Vcs-Browser: http://git.debian.org/?p=users/jak/hardlink.git;a=summary
+
+Package: hardlink
+Architecture: all
+Depends: python (>= 2.5)
+Description: Hardlinks multiple copies of the same file
+ Hardlink is a tool which detects multiple copies of the same file and replaces
+ them with hardlinks.
+ .
+ The idea has been taken from http://code.google.com/p/hardlinkpy/, but the
+ code has been written from scratch and licensed under the MIT license.

@@ -1,0 +1,5 @@
+hardlink (0.1) unstable; urgency=low
+
+  * Initial upload to Debian (Closes: #509685)
+
+ -- Julian Andres Klode <jak@debian.org>  Thu, 02 Oct 2008 17:58:30 +0200
