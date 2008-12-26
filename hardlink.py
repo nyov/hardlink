@@ -129,20 +129,15 @@ class File(object):
             self.linker.saved += self.stat.st_size
             return True
 
-    def optlink(self, other):
-        '''Hardlink the files, maximizing/minimizing link count.'''
-        if self.opts.max:
-            # Maximize the link counting
-            if other.link_count > self.link_count:
-                return other.link(self)
-            else:
-                return self.link(other)
+    def __lt__(self, other):
+        '''Less-Than check, respecting options given on command-line.'''
+        if ((self.opts.max and other.link_count < self.link_count) or
+            (self.opts.max is False and other.link_count > self.link_count) or
+            (self.stat.st_mtime > other.stat.st_mtime and not
+             self.opts.timestamp)):
+            return False
         else:
-            # Minimize the link count or (if max is None) just default link.
-            if other.link_count > self.link_count or self.opts.max is None:
-                return self.link(other)
-            else:
-                return other.link(self)
+            return True
 
 
 class HardLink(object):
@@ -175,25 +170,23 @@ class HardLink(object):
     def divide_and_conquer(self):
         '''Divide and Conquer linking'''
         for files in self.files.itervalues():
-            if len(files) == 1:
-                continue
-            files = iter(files)
             while files:
+                if len(files) < 2:
+                    break
                 remaining = set()
-                # Get a master (ie. one File to compare the others to)
-                master = files.next()
+                # Find the master (highest/lowest link/date)
+                master = max(files)
                 for other in files:
                     # Ignore already linked files
                     if master.is_linked_to(other):
                         continue
                     # If it is allowed to link, do so.
                     elif master.may_link_to(other):
-                        master.optlink(other)
-                    # If not, and if the path is different, add to remaining.
-                    elif other.path != master.path:
+                        master.link(other)
+                    # If not, add to remaining
+                    else:
                         remaining.add(other)
-                # Now we will process the remaining files
-                files = remaining and iter(remaining)
+                files = remaining
 
     def get_files(self):
         '''Return a dict like {'directory': [File(...)]}'''
@@ -245,7 +238,9 @@ def parse_args():
     parser.add_option('-o', '--ignore-owner', action='store_false',
                       dest='owner', default=True, help='Ignore owner changes')
     parser.add_option('-t', '--ignore-time', action='store_false',
-                      dest='timestamp', default=True, help='Ignore timestamps')
+                      dest='timestamp', default=True, help='Ignore timestamps.'
+                      ' Will retain the newer timestamp, unless -m or -M is '
+                      'given')
     parser.add_option('-m', '--maximize', action='store_true', dest='max',
                       help='Maximize the hardlink count, remove the file with '
                       'lowest hardlink cout')
