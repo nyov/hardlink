@@ -10,7 +10,7 @@ Vcs-Browser: http://git.debian.org/?p=users/jak/hardlink.git;a=summary
 
 Package: hardlink
 Architecture: all
-Depends: python (>= 2.5)
+Depends: ${misc:Depends}, python (>= 2.5)
 Description: Hardlinks multiple copies of the same file
  Hardlink is a tool which detects multiple copies of the same file and replaces
  them with hardlinks.
