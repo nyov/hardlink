@@ -99,7 +99,10 @@ class File(object):
 
     def link(self, other):
         '''Link the current file to another one'''
-        backup = other.path + '.bak'
+        backup = other.path + '.hardlink-%s' % os.getpid()
+        if os.path.exists(backup):
+            print 'E: Backup file %s already exists, aborting.' % backup
+            return
         try:
             if not self.opts.dry_run:
                 os.rename(other.path, backup)
