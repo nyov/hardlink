@@ -77,7 +77,10 @@ class File(object):
             print 'Comparing', self.path, 'to', other.path
         self.linker.compared += 1
         try:
-            return filecmp.cmp(self.path, other.path, 0)
+            if self.opts.low_memory:
+                return filecmp._do_cmp(self.path, other.path)
+            else:
+                return filecmp.cmp(self.path, other.path, 0)
         except EnvironmentError, exc:
             print 'Error: Comparing %s to %s failed' % (self.path, other.path)
             print '      ', exc
@@ -158,12 +161,13 @@ class HardLink(object):
         self.linked = 0
         self.saved = 0
         self.files_count = 0
-        self.files = self.get_files()
+        self.files = None if opts.low_memory else self.get_files()
         self.divide_and_conquer()
         self.print_stats()
 
     def print_stats(self):
         '''Print the statistics at the end of the run'''
+        print
         print 'Mode:    ', self.opts.dry_run and 'dry-run' or 'real'
         print 'Files:   ', self.files_count
         print 'Linked:  ', self.linked, 'files'
@@ -173,9 +177,12 @@ class HardLink(object):
 
     def divide_and_conquer(self):
         '''Divide and Conquer linking'''
-        for key, files in self.files.iteritems():
-            files = set(File(fname, self.opts, self) for fname in files)
-            self.files[key] = None # Set empty, so names can be deallocated.
+        if self.opts.low_memory:
+            print 'Searching and linking files (low memory mode)...'
+        else:
+            print 'Linking files...'
+        for fhash in self.get_hashes():
+            files = set(self.get_files_for_hash(fhash))
             while files:
                 if len(files) < 2:
                     break
@@ -194,9 +201,8 @@ class HardLink(object):
                         remaining.add(other)
                 files = remaining
 
-    def get_files(self):
-        '''Return a dict like {'directory': [File(...)]}'''
-        retfiles = defaultdict(list)
+    def get_all_files(self):
+        '''Yield all files matching the options giving on the command line.'''
         for top in self._dirs:
             for root, _, files in os.walk(top):
                 for fname in files:
@@ -207,13 +213,41 @@ class HardLink(object):
                         (self.opts.include and not inc)):
                         continue
                     try:
-                        self.files_count += 1
                         mfile = File(fpath, self.opts, self)
                         if mfile.isreg:
-                            retfiles[mfile.hash].append(fpath)
-                        del mfile
+                            yield mfile
                     except OSError, err:
                         print 'OSError:', err
+
+    def get_hashes(self):
+        '''Get a list of available hashes.'''
+        if self.files:
+            self.files_count = len(self.files)
+            for fhash in self.files:
+                yield fhash
+            return
+        hashes = {}
+        for fobj in self.get_all_files():
+            self.files_count += 1
+            try:
+                if not hashes[fobj.hash]:
+                    hashes[fobj.hash] = True
+                    yield fobj.hash
+            except KeyError:
+                hashes[fobj.hash] = False
+
+    def get_files_for_hash(self, fhash):
+        '''Iterator over all the files with the given hash.'''
+        if self.files:
+            return (File(path, self.opts, self) for path in self.files[fhash])
+        return (fobj for fobj in self.get_all_files() if fobj.hash == fhash)
+
+    def get_files(self):
+        '''Return a dict like {hash: [File(...)]}.'''
+        print 'Building file list...'
+        retfiles = defaultdict(list)
+        for fobj in self.get_all_files():
+            retfiles[fobj.hash].append(fobj.path)
         return retfiles
 
 
@@ -233,7 +267,7 @@ def format(bytes):
 def parse_args():
     '''Parse the command-line options'''
     parser = OptionParser(usage='%prog [options] directory ...',
-                          version='hardlink 0.1')
+                          version='hardlink 0.2')
     parser.add_option('-v', '--verbose', action='count', default=0,
                       help='Increase verbosity (repeat for more verbosity)')
     parser.add_option('-n', '--dry-run', action='store_true',
@@ -259,6 +293,8 @@ def parse_args():
     parser.add_option('-i', '--include', metavar='REGEXP', action='append',
                       help='Regular expression to include files/dirs',
                       default=[])
+    parser.add_option('-l', '--low-memory', action='store_true',
+                      help="Slower mode, usually uses <10MB memory")
 
     # Parse the arguments
     opts, args = parser.parse_args()
