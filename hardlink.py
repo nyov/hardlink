@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (C) 2008 Julian Andres Klode <jak@jak-linux.org>
+# Copyright (C) 2008-2009 Julian Andres Klode <jak@jak-linux.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -157,6 +157,7 @@ class HardLink(object):
         self.compared = 0
         self.linked = 0
         self.saved = 0
+        self.files_count = 0
         self.files = self.get_files()
         self.divide_and_conquer()
         self.print_stats()
@@ -164,7 +165,7 @@ class HardLink(object):
     def print_stats(self):
         '''Print the statistics at the end of the run'''
         print 'Mode:    ', self.opts.dry_run and 'dry-run' or 'real'
-        print 'Files:   ', sum(len(files) for files in self.files.itervalues())
+        print 'Files:   ', self.files_count
         print 'Linked:  ', self.linked, 'files'
         print 'Compared:', self.compared, 'files'
         print 'Saved:   ', format(self.saved)
@@ -172,7 +173,9 @@ class HardLink(object):
 
     def divide_and_conquer(self):
         '''Divide and Conquer linking'''
-        for files in self.files.itervalues():
+        for key, files in self.files.iteritems():
+            files = set(File(fname, self.opts, self) for fname in files)
+            self.files[key] = None # Set empty, so names can be deallocated.
             while files:
                 if len(files) < 2:
                     break
@@ -204,9 +207,10 @@ class HardLink(object):
                         (self.opts.include and not inc)):
                         continue
                     try:
+                        self.files_count += 1
                         mfile = File(fpath, self.opts, self)
                         if mfile.isreg:
-                            retfiles[mfile.hash].append(mfile)
+                            retfiles[mfile.hash].append(fpath)
                         del mfile
                     except OSError, err:
                         print 'OSError:', err
