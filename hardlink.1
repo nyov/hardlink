@@ -1,5 +1,5 @@
 .\" Copyright (C) 2008 Julian Andres Klode. See hardlink.py for license.
-.TH hardlink 1 "2009-06-10" "0.2.0"
+.TH hardlink 1 "2008-12-24" "0.1.0"
 .SH NAME
 hardlink \- Link multiple copies of a file
 .SH SYNOPSIS
@@ -49,14 +49,6 @@ A regular expression which excludes files from being compared and linked.
 A regular expression to include files. If the option \-\-exclude has been given,
 this option re-includes files which would otherwise be excluded. If the option
 is used without \-\-exclude, only files matched by the pattern are included.
-.TP
-.B \-l or \-\-low-memory
-Tell hardlink to not keep all the information in memory. This causes hardlink
-to read much more often from the disk, but has the benefit of requiring only
-a very small percentage of the memory required by the normal mode.
-
-This mode is for situation where you have more than 500,000 files to compare
-or not enough memory (~480MB) to compare 500,000 files using the standard mode.
 
 .SH ARGUMENTS
 .B hardlink

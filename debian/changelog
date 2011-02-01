@@ -1,7 +1,5 @@
 hardlink (0.2.0) UNRELEASED; urgency=low
 
-  * Introduce the option --low-memory which greatly reduces memory usage, but
-    is much slower and does more reads.
   * Reduce memory usage by only storing hash and filename.
 
  -- Julian Andres Klode <jak@debian.org>  Wed, 10 Jun 2009 13:06:08 +0200
