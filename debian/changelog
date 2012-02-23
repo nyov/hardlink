@@ -1,6 +1,5 @@
-hardlink (0.2.0) UNRELEASED; urgency=low
+hardlink (0.1.2) UNRELEASED; urgency=low
 
-  * Reduce memory usage by only storing hash and filename.
   * Support files on the command line (Closes: #608864)
   * Mention duplicate and identical in the description (Closes: #619851)
 
