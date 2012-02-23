@@ -2,6 +2,7 @@ hardlink (0.2.0) UNRELEASED; urgency=low
 
   * Reduce memory usage by only storing hash and filename.
   * Support files on the command line (Closes: #608864)
+  * Mention duplicate and identical in the description (Closes: #619851)
 
  -- Julian Andres Klode <jak@debian.org>  Wed, 10 Jun 2009 13:06:08 +0200
 
