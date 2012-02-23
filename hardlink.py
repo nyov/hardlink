@@ -26,7 +26,8 @@ This program is partially compatible to http://code.google.com/p/hardlinkpy/,
 but some options have changed or are not available anymore.
 '''
 
-import filecmp
+from __future__ import with_statement
+
 import os
 import re
 import sys
@@ -77,7 +78,16 @@ class File(object):
             print 'Comparing', self.path, 'to', other.path
         self.linker.compared += 1
         try:
-            return filecmp.cmp(self.path, other.path, 0)
+            with open(self.path, 'rb') as fp1:
+                with open(other.path, 'rb') as fp2:
+                    while True:
+                        b1 = fp1.read(8192)
+                        b2 = fp2.read(8192)
+                        if b1 != b2:
+                            return False
+                        if not b1:
+                            return True
+
         except EnvironmentError, exc:
             print 'Error: Comparing %s to %s failed' % (self.path, other.path)
             print '      ', exc
