@@ -198,7 +198,7 @@ class HardLink(object):
         '''Return a dict like {'directory': [File(...)]}'''
         retfiles = defaultdict(list)
         for top in self._dirs:
-            for root, _, files in os.walk(top):
+            for root, _, files in walk(top):
                 for fname in files:
                     fpath = os.path.join(root, fname)
                     exc = any(pat.search(fpath) for pat in self.opts.exclude)
@@ -215,6 +215,13 @@ class HardLink(object):
                     except OSError, err:
                         print 'OSError:', err
         return retfiles
+
+
+def walk(path):
+    '''Like os.walk(), but if path is a file, work as well.'''
+    if os.path.isdir(path):
+        return os.walk(path)
+    return [(os.path.dirname(path), [], [os.path.basename(path)])]
 
 
 def format(bytes):
