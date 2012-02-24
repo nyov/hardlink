@@ -2,7 +2,7 @@ Source: hardlink
 Section: utils
 Priority: optional
 Maintainer: Julian Andres Klode <jak@debian.org>
-Build-Depends: debhelper (>= 7)
+Build-Depends: debhelper (>= 9)
 Standards-Version: 3.8.0
 Homepage: http://jak-linux.org/projects/hardlink/
 Vcs-Git: git://git.debian.org/git/users/jak/hardlink.git
