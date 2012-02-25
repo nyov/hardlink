@@ -1,8 +1,8 @@
-Format-Specification: http://wiki.debian.org/Proposals/CopyrightFormat?action=recall&rev=420
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: *
-Copyright: Copyright (C) 2008 Julian Andres Klode <jak@jak-linux.org>
-License: MIT
+Copyright: Copyright (C) 2008 - 2012 Julian Andres Klode <jak@jak-linux.org>
+License: Expat
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
  in the Software without restriction, including without limitation the rights
