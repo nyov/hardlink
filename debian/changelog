@@ -3,6 +3,7 @@ hardlink (0.1.2) UNRELEASED; urgency=low
   * Support files on the command line (Closes: #608864)
   * Mention duplicate and identical in the description (Closes: #619851)
   * Document security issues (Closes: #645516, like CVE-2011-3632)
+  * When both exclude and include are specified, behave as the manpage says
   * Upgrade to debhelper 9
   * Upgrade to Policy 3.9.3 and copyright-format 1.0
 

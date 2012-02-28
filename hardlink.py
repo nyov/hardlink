@@ -210,9 +210,11 @@ class HardLink(object):
                     fpath = os.path.join(root, fname)
                     exc = any(pat.search(fpath) for pat in self.opts.exclude)
                     inc = any(pat.search(fpath) for pat in self.opts.include)
-                    if ((self.opts.exclude and exc and not inc) or
-                        (self.opts.include and not inc)):
+                    if exc and not inc:
                         continue
+                    elif not self.opts.exclude:
+                        if self.opts.include and not inc:
+                            continue
                     try:
                         mfile = File(fpath, self.opts, self)
                         if mfile.isreg:
