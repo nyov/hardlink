@@ -1,3 +1,13 @@
+hardlink (0.2.0~rc1) experimental; urgency=low
+
+  * Rewrite hardlink in C, improves memory usage
+    - Use PCRE for regular expressions (can build with POSIX ones as well)
+  * Handle several signals (SIGINT, SIGTERM, SIGUSR1, SIGUSR2)
+  * Do not create backups. Instead, link to temporary and then rename to target.
+  * Add a "-c" compatibility option for Fedora people and their friends
+
+ -- Julian Andres Klode <jak@debian.org>  Sat, 03 Mar 2012 18:11:05 +0100
+
 hardlink (0.1.2) unstable; urgency=low
 
   * Support files on the command line (Closes: #608864)

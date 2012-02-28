@@ -1,0 +1,10 @@
+hardlink (0.2.0~rc1) experimental; urgency=low
+
+  Hardlink has been rewritten in C. As part of this rewrite, hardlink
+  has switched to process regular expressions using a PCRE library,
+  libpcreposix. The format understood by PCRE may differ in details
+  from the format understood by Python's regular expression engine.
+
+  Hardlink should require far less memory now.
+
+ -- Julian Andres Klode <jak@debian.org>  Sat, 03 Mar 2012 17:56:17 +0100
