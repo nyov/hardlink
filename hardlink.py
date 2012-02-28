@@ -247,8 +247,8 @@ def format(bytes):
 
 def parse_args():
     '''Parse the command-line options'''
-    parser = OptionParser(usage='%prog [options] directory ...',
-                          version='hardlink 0.1')
+    parser = OptionParser(usage='%prog [options] directory / file ...',
+                          version='hardlink 0.1.2')
     parser.add_option('-v', '--verbose', action='count', default=0,
                       help='Increase verbosity (repeat for more verbosity)')
     parser.add_option('-n', '--dry-run', action='store_true',
