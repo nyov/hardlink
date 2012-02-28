@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (C) 2008 Julian Andres Klode <jak@jak-linux.org>
+# Copyright (C) 2008 - 2012 Julian Andres Klode <jak@jak-linux.org>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
