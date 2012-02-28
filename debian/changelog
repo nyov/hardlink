@@ -1,4 +1,4 @@
-hardlink (0.1.2) UNRELEASED; urgency=low
+hardlink (0.1.2) unstable; urgency=low
 
   * Support files on the command line (Closes: #608864)
   * Mention duplicate and identical in the description (Closes: #619851)
@@ -7,7 +7,7 @@ hardlink (0.1.2) UNRELEASED; urgency=low
   * Upgrade to debhelper 9
   * Upgrade to Policy 3.9.3 and copyright-format 1.0
 
- -- Julian Andres Klode <jak@debian.org>  Wed, 10 Jun 2009 13:06:08 +0200
+ -- Julian Andres Klode <jak@debian.org>  Tue, 28 Feb 2012 17:57:27 +0100
 
 hardlink (0.1.1) unstable; urgency=low
 
