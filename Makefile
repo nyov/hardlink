@@ -34,8 +34,8 @@ all: hardlink
 config.log config.h:
 	@for feat in $(FEATURES); do \
 		printf "Checking for %s..." "$$feat" | tee -a config.log; \
-		if $(MYCC) $(LDFLAGS) $(LDLIBS) $(MYLDLIBS) $(MYCFLAGS) -o /dev/null \
-			-DTEST_$$feat configure.c 2>>config.log; then \
+		if $(MYCC) $(MYCFLAGS) -o /dev/null \
+			-DTEST_$$feat configure.c $(LDLIBS) $(MYLDLIBS) 2>>config.log; then \
 			printf "\tOK\n" | tee -a config.log; \
 			echo "#define HAVE_$$feat 1" >&3; \
 		else \
@@ -48,7 +48,7 @@ hardlink.o: hardlink.c config.h
 	$(MYCC) $(MYCFLAGS) -o $@ -c hardlink.c
 
 hardlink: hardlink.o
-	$(MYLD) $(LDLIBS) $(MYLDLIBS) -o $@ hardlink.o
+	$(MYLD) -o $@ hardlink.o $(LDLIBS) $(MYLDLIBS)
 
 install: hardlink
 	install -d  $(DESTDIR)$(BINDIR)
