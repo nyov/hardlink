@@ -1,3 +1,13 @@
+hardlink (0.2.0) unstable; urgency=low
+
+  [ Diego Elio Pettenò ]
+  * Fix positioning of LDLIBS flags, order is important.
+
+  [ Julian Andres Klode ]
+  * Final release of 0.2.0; upload to unstable
+
+ -- Julian Andres Klode <jak@debian.org>  Sat, 12 May 2012 12:57:02 +0200
+
 hardlink (0.2.0~rc1) experimental; urgency=low
 
   * Rewrite hardlink in C, improves memory usage
