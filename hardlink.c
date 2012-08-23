@@ -99,6 +99,7 @@ struct file {
     struct file *next;
     hl_bool slave;
     struct link {
+        struct link *next;
         int basename;
 #if __STDC_VERSION__ >= 199901L
         char path[];
@@ -353,6 +354,9 @@ static hl_bool file_contents_equal(const struct file *a, const struct file *b)
     int cmp = 0;                /* zero => equal */
     off_t off = 0;              /* current offset */
 
+    assert(a->links != NULL);
+    assert(b->links != NULL);
+
     jlog(JLOG_DEBUG1, "Comparing %s to %s", a->links->path, b->links->path);
 
     stats.comparisons++;
@@ -415,6 +419,7 @@ static hl_bool file_may_link_to(const struct file *a, const struct file *b)
 {
     return (a->st.st_size != 0 &&
             a->st.st_size == b->st.st_size &&
+            a->links != NULL && b->links != NULL &&
             a->st.st_dev == b->st.st_dev &&
             a->st.st_ino != b->st.st_ino &&
             (!opts.respect_mode || a->st.st_mode == b->st.st_mode) &&
@@ -465,6 +470,10 @@ static int file_compare(const struct file *a, const struct file *b)
  */
 static hl_bool file_link(struct file *a, struct file *b)
 {
+  file_link:
+    assert(a->links != NULL);
+    assert(b->links != NULL);
+
     jlog(JLOG_INFO, "%sLinking %s to %s (-%s)",
          opts.dry_run ? "[DryRun] " : "", a->links->path, b->links->path,
          format(a->st.st_size));
@@ -501,12 +510,27 @@ static hl_bool file_link(struct file *a, struct file *b)
 
     /* Update statistics */
     stats.linked++;
-    stats.saved += a->st.st_size;
 
     /* Increase the link count of this file, and set stat() of other file */
     a->st.st_nlink++;
-    b->st = a->st;
-    /* linkall: This one has already been replaced, don't do it again */
+    b->st.st_nlink--;
+
+    if (b->st.st_nlink == 0)
+        stats.saved += a->st.st_size;
+
+    /* Move the link from file b to a */
+    {
+        struct link *new_link = b->links;
+
+        b->links = b->links->next;
+        new_link->next = a->links->next;
+        a->links->next = new_link;
+    }
+
+    // Do it again
+    if (b->links)
+        goto file_link;
+
     b->slave = TRUE;
 
     return TRUE;
@@ -521,12 +545,21 @@ static hl_bool file_link(struct file *a, struct file *b)
  */
 static void file_free_chain(void *node)
 {
-    struct file *file = node;
+    struct file *file;
+    struct link *link;
 
-    if (file) {
-        file_free_chain(file->next);
-        free(file->links);
-        free(node);
+    while (node != NULL) {
+        file = node;
+        node = file->next;
+
+        while (file->links != NULL) {
+            link = file->links;
+            file->links = link->next;
+
+            free(link);
+        }
+
+        free(file);
     }
 }
 
@@ -584,6 +617,7 @@ static int inserter(const char *fpath, const struct stat *sb, int typeflag,
 
     fil->st = *sb;
     fil->links->basename = ftwbuf->base;
+    fil->links->next = NULL;
 
     memcpy(fil->links->path, fpath, pathlen);
 
