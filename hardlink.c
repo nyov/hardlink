@@ -97,15 +97,17 @@ typedef enum hl_bool {
 struct file {
     struct stat st;
     struct file *next;
-    int basename;
     hl_bool slave;
+    struct link {
+        int basename;
 #if __STDC_VERSION__ >= 199901L
-    char path[];
+        char path[];
 #elif __GNUC__
-    char path[0];
+        char path[0];
 #else
-    char path[1];
+        char path[1];
 #endif
+    } *links;
 };
 
 /**
@@ -351,13 +353,13 @@ static hl_bool file_contents_equal(const struct file *a, const struct file *b)
     int cmp = 0;                /* zero => equal */
     off_t off = 0;              /* current offset */
 
-    jlog(JLOG_DEBUG1, "Comparing %s to %s", a->path, b->path);
+    jlog(JLOG_DEBUG1, "Comparing %s to %s", a->links->path, b->links->path);
 
     stats.comparisons++;
 
-    if ((fa = fopen(a->path, "rb")) == NULL)
+    if ((fa = fopen(a->links->path, "rb")) == NULL)
         goto err;
-    if ((fb = fopen(b->path, "rb")) == NULL)
+    if ((fb = fopen(b->links->path, "rb")) == NULL)
         goto err;
 
     posix_fadvise(fileno(fa), 0, 0, POSIX_FADV_SEQUENTIAL);
@@ -391,9 +393,11 @@ static hl_bool file_contents_equal(const struct file *a, const struct file *b)
     return cmp == 0;
   err:
     if (fa == NULL || fb == NULL)
-        jlog(JLOG_SYSERR, "Cannot open %s", fa ? b->path : a->path);
+        jlog(JLOG_SYSERR, "Cannot open %s",
+             fa ? b->links->path : a->links->path);
     else
-        jlog(JLOG_SYSERR, "Cannot read %s", ferror(fa) ? a->path : b->path);
+        jlog(JLOG_SYSERR, "Cannot read %s",
+             ferror(fa) ? a->links->path : b->links->path);
     cmp = 1;
     goto out;
 }
@@ -418,7 +422,8 @@ static hl_bool file_may_link_to(const struct file *a, const struct file *b)
             (!opts.respect_owner || a->st.st_gid == b->st.st_gid) &&
             (!opts.respect_time || a->st.st_mtime == b->st.st_mtime) &&
             (!opts.respect_name
-             || strcmp(a->path + a->basename, b->path + b->basename) == 0)
+             || strcmp(a->links->path + a->links->basename,
+                       b->links->path + b->links->basename) == 0)
             && file_contents_equal(a, b));
 }
 
@@ -461,7 +466,7 @@ static int file_compare(const struct file *a, const struct file *b)
 static hl_bool file_link(struct file *a, struct file *b)
 {
     jlog(JLOG_INFO, "%sLinking %s to %s (-%s)",
-         opts.dry_run ? "[DryRun] " : "", a->path, b->path,
+         opts.dry_run ? "[DryRun] " : "", a->links->path, b->links->path,
          format(a->st.st_size));
 
     if (a->st.st_dev == b->st.st_dev && a->st.st_ino == b->st.st_ino) {
@@ -470,7 +475,7 @@ static hl_bool file_link(struct file *a, struct file *b)
     }
 
     if (!opts.dry_run) {
-        size_t len = strlen(b->path) + strlen(".hardlink-temporary") + 1;
+        size_t len = strlen(b->links->path) + strlen(".hardlink-temporary") + 1;
         char *new_path = malloc(len);
 
         if (new_path == NULL) {
@@ -478,14 +483,15 @@ static hl_bool file_link(struct file *a, struct file *b)
             exit(1);
         }
 
-        snprintf(new_path, len, "%s.hardlink-temporary", b->path);
+        snprintf(new_path, len, "%s.hardlink-temporary", b->links->path);
 
-        if (link(a->path, new_path) != 0) {
-            jlog(JLOG_SYSERR, "Cannot link %s to %s", a->path, new_path);
+        if (link(a->links->path, new_path) != 0) {
+            jlog(JLOG_SYSERR, "Cannot link %s to %s", a->links->path, new_path);
             free(new_path);
             return FALSE;
-        } else if (rename(new_path, b->path) != 0) {
-            jlog(JLOG_SYSERR, "Cannot rename %s to %s", a->path, new_path);
+        } else if (rename(new_path, b->links->path) != 0) {
+            jlog(JLOG_SYSERR, "Cannot rename %s to %s", a->links->path,
+                 new_path);
             unlink(new_path);   /* cleanup failed rename */
             free(new_path);
             return FALSE;
@@ -519,6 +525,7 @@ static void file_free_chain(void *node)
 
     if (file) {
         file_free_chain(file->next);
+        free(file->links);
         free(node);
     }
 }
@@ -565,15 +572,20 @@ static int inserter(const char *fpath, const struct stat *sb, int typeflag,
 
     pathlen = strlen(fpath) + 1;
 
-    fil = calloc(1, sizeof(*fil) + pathlen);
+    fil = calloc(1, sizeof(*fil));
 
     if (fil == NULL)
         return jlog(JLOG_SYSFAT, "Cannot continue"), 1;
 
-    fil->st = *sb;
-    fil->basename = ftwbuf->base;
+    fil->links = calloc(1, sizeof(struct link) + pathlen);
 
-    memcpy(fil->path, fpath, pathlen);
+    if (fil->links == NULL)
+        return jlog(JLOG_SYSFAT, "Cannot continue"), 1;
+
+    fil->st = *sb;
+    fil->links->basename = ftwbuf->base;
+
+    memcpy(fil->links->path, fpath, pathlen);
 
     node = tsearch(fil, &files, compare_nodes);
 
