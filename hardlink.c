@@ -186,6 +186,7 @@ static struct options {
  * are considered equal, see compare_nodes()
  */
 static void *files;
+static void *files_by_ino;
 
 /*
  * last_signal
@@ -300,6 +301,26 @@ static int compare_nodes(const void *_a, const void *_b)
         diff = CMP(a->st.st_dev, b->st.st_dev);
     if (diff == 0)
         diff = CMP(a->st.st_size, b->st.st_size);
+
+    return diff;
+}
+/**
+ * compare_nodes_ino - Node comparison function
+ * @_a: The first node (a #struct file)
+ * @_b: The second node (a #struct file)
+ *
+ * Compare the two nodes for the binary tree.
+ */
+static int compare_nodes_ino(const void *_a, const void *_b)
+{
+    const struct file *a = _a;
+    const struct file *b = _b;
+    int diff = 0;
+
+    if (diff == 0)
+        diff = CMP(a->st.st_dev, b->st.st_dev);
+    if (diff == 0)
+        diff = CMP(a->st.st_ino, b->st.st_ino);
 
     return diff;
 }
@@ -621,15 +642,32 @@ static int inserter(const char *fpath, const struct stat *sb, int typeflag,
 
     memcpy(fil->links->path, fpath, pathlen);
 
-    node = tsearch(fil, &files, compare_nodes);
+    node = tsearch(fil, &files_by_ino, compare_nodes_ino);
 
     if (node == NULL)
         return jlog(JLOG_SYSFAT, "Cannot continue"), 1;
 
     if (*node != fil) {
-        assert((*node)->st.st_size == sb->st_size);
-        fil->next = *node;
-        *node = fil;
+        /* Already known inode, add link to inode information */
+        assert((*node)->st.st_dev == sb->st_dev);
+        assert((*node)->st.st_ino == sb->st_ino);
+
+        fil->links->next = (*node)->links;
+        (*node)->links = fil->links;
+
+        free(fil);
+    } else {
+        /* New inode, insert into by-size table */
+        node = tsearch(fil, &files, compare_nodes);
+
+        if (node == NULL)
+            return jlog(JLOG_SYSFAT, "Cannot continue"), 1;
+
+        if (*node != fil) {
+            assert((*node)->st.st_size == sb->st_size);
+            fil->next = *node;
+            *node = fil;
+        }
     }
 
     return 0;
