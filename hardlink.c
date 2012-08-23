@@ -549,33 +549,6 @@ static hl_bool file_link(struct file *a, struct file *b)
 }
 
 /**
- * file_free - Free a linked list of files
- * @node: A #struct file
- *
- * Free the file pointed to by @node and then follow the files @next
- * pointer.
- */
-static void file_free_chain(void *node)
-{
-    struct file *file;
-    struct link *link;
-
-    while (node != NULL) {
-        file = node;
-        node = file->next;
-
-        while (file->links != NULL) {
-            link = file->links;
-            file->links = link->next;
-
-            free(link);
-        }
-
-        free(file);
-    }
-}
-
-/**
  * inserter - Callback function for nftw()
  * @fpath: The path of the file being visited
  * @sb:    The stat information of the file
@@ -897,23 +870,6 @@ static void to_be_called_atexit(void)
 {
     if (stats.started)
         print_stats();
-
-#if defined(__GNU__) || defined(__GLIBC__)
-    tdestroy(files, file_free_chain);
-#endif
-
-    while (opts.include) {
-        struct regex_link *next = opts.include->next;
-        regfree(&opts.include->preg);
-        free(opts.include);
-        opts.include = next;
-    }
-    while (opts.exclude) {
-        struct regex_link *next = opts.exclude->next;
-        regfree(&opts.exclude->preg);
-        free(opts.exclude);
-        opts.exclude = next;
-    }
 }
 
 /**
