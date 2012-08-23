@@ -664,9 +664,22 @@ static int inserter(const char *fpath, const struct stat *sb, int typeflag,
             return jlog(JLOG_SYSFAT, "Cannot continue"), 1;
 
         if (*node != fil) {
-            assert((*node)->st.st_size == sb->st_size);
-            fil->next = *node;
-            *node = fil;
+            struct file *l;
+
+            if (file_compare(fil, *node) >= 0) {
+                fil->next = *node;
+                *node = fil;
+            } else {
+                for (l = *node; l != NULL; l = l->next) {
+                    if (l->next != NULL && file_compare(fil, l->next) < 0)
+                        continue;
+
+                    fil->next = l->next;
+                    l->next = fil;
+
+                    break;
+                }
+            }
         }
     }
 
