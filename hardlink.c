@@ -89,7 +89,6 @@ typedef enum hl_bool {
  * @st:       The stat buffer associated with the file
  * @next:     Next file with the same size
  * @basename: The offset off the basename in the filename
- * @slave:    Whether the file has been linked to another one
  * @path:     The path of the file
  *
  * This contains all information we need about a file.
@@ -97,7 +96,6 @@ typedef enum hl_bool {
 struct file {
     struct stat st;
     struct file *next;
-    hl_bool slave;
     struct link {
         struct link *next;
         int basename;
@@ -499,11 +497,6 @@ static hl_bool file_link(struct file *a, struct file *b)
          opts.dry_run ? "[DryRun] " : "", a->links->path, b->links->path,
          format(a->st.st_size));
 
-    if (a->st.st_dev == b->st.st_dev && a->st.st_ino == b->st.st_ino) {
-        b->slave = TRUE;
-        return TRUE;
-    }
-
     if (!opts.dry_run) {
         size_t len = strlen(b->links->path) + strlen(".hardlink-temporary") + 1;
         char *new_path = malloc(len);
@@ -551,8 +544,6 @@ static hl_bool file_link(struct file *a, struct file *b)
     // Do it again
     if (b->links)
         goto file_link;
-
-    b->slave = TRUE;
 
     return TRUE;
 }
@@ -687,56 +678,6 @@ static int inserter(const char *fpath, const struct stat *sb, int typeflag,
 }
 
 /**
- * hardlinker - Link common files together
- * @master: The first file in a linked list of candidates for linking
- *
- * Traverse the list pointed to by @master, find the greatest file using
- * @file_compare and link all equal files to it. This function will be
- * called once for each file in the link pointed to by @master.
- */
-static int hardlinker(struct file *master)
-{
-    struct file *other = NULL;
-    struct file **others = NULL;
-    size_t i = 8, n = 0;
-
-    if (handle_interrupt())
-        return 1;
-    if (master->slave)
-        return 0;
-
-    for (other = master->next; other != NULL; other = other->next) {
-        if (handle_interrupt())
-            return 1;
-
-        assert(other != other->next);
-        assert(other->st.st_size == master->st.st_size);
-
-        if (!file_may_link_to(master, other))
-            continue;
-        if (i <= n || others == NULL)
-            others = realloc(others, (i *= 2) * sizeof(*others));
-        if (others == NULL) {
-            jlog(JLOG_SYSFAT, "Unable to continue");
-            return -1;
-        }
-        if (file_compare(master, other) < 0) {
-            others[n++] = master;
-            master = other;
-        } else {
-            others[n++] = other;
-        }
-    }
-
-    for (i = 0; !handle_interrupt() && i < n; i++)
-        file_link(master, others[i]);
-
-    free(others);
-
-    return handle_interrupt();
-}
-
-/**
  * visitor - Callback for twalk()
  * @nodep: Pointer to a pointer to a #struct file
  * @which: At which point this visit is (preorder, postorder, endorder)
@@ -748,16 +689,34 @@ static int hardlinker(struct file *master)
  */
 static void visitor(const void *nodep, const VISIT which, const int depth)
 {
-    struct file *file = *(struct file **) nodep;
+    struct file *master = *(struct file **) nodep;
+    struct file *other;
 
     (void) depth;
 
     if (which != leaf && which != endorder)
         return;
 
-    for (; file != NULL; file = file->next)
-        if (hardlinker(file) != 0)
+    for (; master != NULL; master = master->next) {
+        if (handle_interrupt())
             exit(1);
+        if (master->links == NULL)
+            continue;
+
+        for (other = master->next; other != NULL; other = other->next) {
+            if (handle_interrupt())
+                exit(1);
+
+            assert(other != other->next);
+            assert(other->st.st_size == master->st.st_size);
+
+            if (other->links == NULL || !file_may_link_to(master, other))
+                continue;
+
+            if (!file_link(master, other) && errno == EMLINK)
+                master = other;
+        }
+    }
 }
 
 /**
