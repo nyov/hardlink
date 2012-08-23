@@ -320,6 +320,13 @@ static int compare_nodes_ino(const void *_a, const void *_b)
     if (diff == 0)
         diff = CMP(a->st.st_ino, b->st.st_ino);
 
+    /* If opts.respect_name is used, we will restrict a struct file to
+     * contain only links with the same basename to keep the rest simple.
+     */
+    if (diff == 0 && opts.respect_name)
+        diff = strcmp(a->links->path + a->links->basename,
+                      b->links->path + b->links->basename);
+
     return diff;
 }
 
