@@ -63,6 +63,11 @@ may start reading from the device. If a component of a path is replaced by
 a symbolic link or file permissions change, security may be compromised. Do
 not run hardlink on a changing tree or on a tree controlled by another user.
 
+.B hardlink
+, as of version 0.3 RC1, improperly calculates the amount of space saved if the
+option \-\-respect\-name is specified. In previous versions, the amount was
+wrong in almost all other cases as well.
+
 .SH AUTHOR
 The program hardlink and this manpage have been written by Julian Andres Klode,
 and are licensed under the MIT license. See the code of hardlink for further
