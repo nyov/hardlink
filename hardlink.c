@@ -420,7 +420,7 @@ static hl_bool file_contents_equal(const struct file *a, const struct file *b)
         fclose(fa);
     if (fb != NULL)
         fclose(fb);
-    return cmp == 0;
+    return !handle_interrupt() && cmp == 0;
   err:
     if (fa == NULL || fb == NULL)
         jlog(JLOG_SYSERR, "Cannot open %s",
