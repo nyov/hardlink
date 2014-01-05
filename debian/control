@@ -3,10 +3,10 @@ Section: utils
 Priority: optional
 Maintainer: Julian Andres Klode <jak@debian.org>
 Build-Depends: debhelper (>= 9), pkg-config, libpcre3-dev
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 Homepage: http://jak-linux.org/projects/hardlink/
-Vcs-Git: git://git.debian.org/git/users/jak/hardlink.git
-Vcs-Browser: http://git.debian.org/?p=users/jak/hardlink.git;a=summary
+Vcs-Git: git://anonscm.debian.org/users/jak/hardlink.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=users/jak/hardlink.git;a=summary
 
 Package: hardlink
 Architecture: any
