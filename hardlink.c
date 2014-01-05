@@ -704,7 +704,7 @@ static void visitor(const void *nodep, const VISIT which, const int depth)
  */
 static int version(void)
 {
-    printf("hardlink 0.3 RC1\n");
+    printf("hardlink 0.3 RC2\n");
     printf("Compiled %s at %s\n", __DATE__, __TIME__);
     exit(0);
 }

@@ -1,3 +1,12 @@
+hardlink (0.3.0~rc2) experimental; urgency=high
+
+  * Correctly handle SIGINT and SIGTERM during file comparisons. This fixes
+    a potential loss of one file in such situations.
+  * hardlink.c: Update copyright statement
+  * debian/control: Update Standards-Version, Vcs-Git, and Vcs-Browser
+
+ -- Julian Andres Klode <jak@debian.org>  Sun, 05 Jan 2014 16:13:39 +0100
+
 hardlink (0.3.0~rc1) experimental; urgency=low
 
   * Group files by ino. This saves resources, avoids useless comparisons,
