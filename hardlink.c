@@ -901,7 +901,6 @@ int main(int argc, char *argv[])
 
     /* If we receive a SIGINT, end the processing */
     sigaction(SIGINT, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
     sigaction(SIGUSR1, &sa, NULL);
     sigaction(SIGUSR2, &sa, NULL);
 
