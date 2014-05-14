@@ -84,6 +84,10 @@ typedef enum hl_bool {
 #include <regex.h>              /* regcomp(), regsearch() */
 #endif
 
+#ifdef HAVE_XATTR
+#include <attr/xattr.h>         /* listxattr, getxattr */
+#endif
+
 /**
  * struct file - Information about a file
  * @st:       The stat buffer associated with the file
@@ -136,6 +140,7 @@ enum log_level {
  * @started: Whether we are post command-line processing
  * @files: The number of files worked on
  * @linked: The number of files replaced by a hardlink to a master
+ * @xattr_comparisons: The number of extended attribute comparisons
  * @comparisons: The number of comparisons
  * @saved: The (exaggerated) amount of space saved
  * @start_time: The time we started at, in seconds since some unspecified point
@@ -144,6 +149,7 @@ static struct statistics {
     hl_bool started;
     size_t files;
     size_t linked;
+    size_t xattr_comparisons;
     size_t comparisons;
     double saved;
     double start_time;
@@ -158,6 +164,7 @@ static struct statistics {
  * @respect_owner: Whether to respect file owners (uid, gid; default = TRUE)
  * @respect_name: Whether to respect file names (default = FALSE)
  * @respect_time: Whether to respect file modification times (default = TRUE)
+ * @respect_xattrs: Whether to respect extended attributes (default = FALSE)
  * @maximise: Chose the file with the highest link count as master
  * @minimise: Chose the file with the lowest link count as master
  * @dry_run: Specifies whether hardlink should not link files (default = FALSE)
@@ -172,6 +179,7 @@ static struct options {
     unsigned int respect_owner:1;
     unsigned int respect_name:1;
     unsigned int respect_time:1;
+    unsigned int respect_xattrs:1;
     unsigned int maximise:1;
     unsigned int minimise:1;
     unsigned int dry_run:1;
@@ -302,6 +310,7 @@ static int compare_nodes(const void *_a, const void *_b)
 
     return diff;
 }
+
 /**
  * compare_nodes_ino - Node comparison function
  * @_a: The first node (a #struct file)
@@ -338,6 +347,9 @@ static void print_stats(void)
     jlog(JLOG_SUMMARY, "Mode:     %s", opts.dry_run ? "dry-run" : "real");
     jlog(JLOG_SUMMARY, "Files:    %zu", stats.files);
     jlog(JLOG_SUMMARY, "Linked:   %zu files", stats.linked);
+#ifdef HAVE_XATTR
+    jlog(JLOG_SUMMARY, "Compared: %zu xattrs", stats.xattr_comparisons);
+#endif
     jlog(JLOG_SUMMARY, "Compared: %zu files", stats.comparisons);
     jlog(JLOG_SUMMARY, "Saved:    %s", format(stats.saved));
     jlog(JLOG_SUMMARY, "Duration: %.2f seconds", gettime() - stats.start_time);
@@ -363,6 +375,214 @@ static hl_bool handle_interrupt(void)
     last_signal = 0;
     return FALSE;
 }
+
+#ifdef HAVE_XATTR
+
+/**
+ * malloc_or_die -- Wrapper for malloc()
+ *
+ * This does the same thing as malloc() except that it aborts if memory
+ * can't be allocated.
+ */
+static void *malloc_or_die(size_t size)
+{
+    void *mem = malloc(size);
+
+    if (!mem) {
+        jlog(JLOG_SYSFAT, "Cannot allocate memory");
+        exit(1);
+    }
+    return mem;
+}
+
+/**
+ * llistxattr_or_die - Wrapper for llistxattr()
+ *
+ * This does the same thing as llistxattr() except that it aborts if any error
+ * other than "not supported" is detected.
+ */
+static ssize_t llistxattr_or_die(const char *path, char *list, size_t size)
+{
+    ssize_t len = llistxattr(path, list, size);
+
+    if (len < 0 && errno != ENOTSUP) {
+        jlog(JLOG_SYSFAT, "Cannot get xattr names for %s", path);
+        exit(1);
+    }
+    return len;
+}
+
+/**
+ * lgetxattr_or_die - Wrapper for lgetxattr()
+ *
+ * This does the same thing as lgetxattr() except that it aborts upon error.
+ */
+static ssize_t lgetxattr_or_die(const char *path, const char *name, void *value,
+                                size_t size)
+{
+    ssize_t len = lgetxattr(path, name, value, size);
+
+    if (len < 0) {
+        jlog(JLOG_SYSFAT, "Cannot get xattr value of %s for %s", name, path);
+        exit(1);
+    }
+    return len;
+}
+
+/**
+ * get_xattr_name_count - Count the number of xattr names
+ * @names: a non-empty table of concatenated, null-terminated xattr names
+ * @len: the total length of the table
+ *
+ * @Returns the number of xattr names
+ */
+static int get_xattr_name_count(const char *const names, ssize_t len)
+{
+    int count = 0;
+    const char *name;
+
+    for (name = names; name < (names + len); name += strlen(name) + 1)
+        count++;
+
+    return count;
+}
+
+/**
+ * cmp_xattr_name_ptrs - Compare two pointers to xattr names by comparing
+ * the names they point to.
+ */
+static int cmp_xattr_name_ptrs(const void *ptr1, const void *ptr2)
+{
+    return strcmp(*(char *const *) ptr1, *(char *const *) ptr2);
+}
+
+/**
+ * get_sorted_xattr_name_table - Create a sorted table of xattr names.
+ * @names - table of concatentated, null-terminated xattr names
+ * @n - the number of names
+ *
+ * @Returns allocated table of pointers to the names, sorted alphabetically
+ */
+static const char **get_sorted_xattr_name_table(const char *names, int n)
+{
+    const char **table = malloc_or_die(n * sizeof(char *));
+    int i;
+
+    for (i = 0; i < n; i++) {
+        table[i] = names;
+        names += strlen(names) + 1;
+    }
+
+    qsort(table, n, sizeof(char *), cmp_xattr_name_ptrs);
+
+    return table;
+}
+
+/**
+ * file_xattrs_equal - Compare the extended attributes of two files
+ * @a: The first file
+ * @b: The second file
+ *
+ * @Returns: %TRUE if and only if extended attributes are equal
+ */
+static hl_bool file_xattrs_equal(const struct file *a, const struct file *b)
+{
+    ssize_t len_a;
+    ssize_t len_b;
+    char *names_a = NULL;
+    char *names_b = NULL;
+    int n_a;
+    int n_b;
+    const char **name_ptrs_a = NULL;
+    const char **name_ptrs_b = NULL;
+    void *value_a = NULL;
+    void *value_b = NULL;
+    hl_bool ret = FALSE;
+    int i;
+
+    assert(a->links != NULL);
+    assert(b->links != NULL);
+
+    jlog(JLOG_DEBUG1, "Comparing xattrs of %s to %s", a->links->path,
+         b->links->path);
+
+    stats.xattr_comparisons++;
+
+    len_a = llistxattr_or_die(a->links->path, NULL, 0);
+    len_b = llistxattr_or_die(b->links->path, NULL, 0);
+
+    if (len_a <= 0 && len_b <= 0)
+        return TRUE;            // xattrs not supported or neither file has any
+
+    if (len_a != len_b)
+        return FALSE;           // total lengths of xattr names differ
+
+    names_a = malloc_or_die(len_a);
+    names_b = malloc_or_die(len_b);
+
+    len_a = llistxattr_or_die(a->links->path, names_a, len_a);
+    len_b = llistxattr_or_die(b->links->path, names_b, len_b);
+    assert((len_a > 0) && (len_a == len_b));
+
+    n_a = get_xattr_name_count(names_a, len_a);
+    n_b = get_xattr_name_count(names_b, len_b);
+
+    if (n_a != n_b)
+        goto exit;              // numbers of xattrs differ
+
+    name_ptrs_a = get_sorted_xattr_name_table(names_a, n_a);
+    name_ptrs_b = get_sorted_xattr_name_table(names_b, n_b);
+
+    // We now have two sorted tables of xattr names.
+
+    for (i = 0; i < n_a; i++) {
+        if (handle_interrupt())
+            goto exit;          // user wants to quit
+
+        if (strcmp(name_ptrs_a[i], name_ptrs_b[i]) != 0)
+            goto exit;          // names at same slot differ
+
+        len_a = lgetxattr_or_die(a->links->path, name_ptrs_a[i], NULL, 0);
+        len_b = lgetxattr_or_die(b->links->path, name_ptrs_b[i], NULL, 0);
+
+        if (len_a != len_b)
+            goto exit;          // xattrs with same name, different value lengths
+
+        value_a = malloc_or_die(len_a);
+        value_b = malloc_or_die(len_b);
+
+        len_a = lgetxattr_or_die(a->links->path, name_ptrs_a[i],
+                                 value_a, len_a);
+        len_b = lgetxattr_or_die(b->links->path, name_ptrs_b[i],
+                                 value_b, len_b);
+        assert((len_a >= 0) && (len_a == len_b));
+
+        if (memcmp(value_a, value_b, len_a) != 0)
+            goto exit;          // xattrs with same name, different values
+
+        free(value_a);
+        free(value_b);
+        value_a = NULL;
+        value_b = NULL;
+    }
+
+    ret = TRUE;
+
+  exit:
+    free(names_a);
+    free(names_b);
+    free(name_ptrs_a);
+    free(name_ptrs_b);
+    free(value_a);
+    free(value_b);
+    return ret;
+}
+#else
+static hl_bool file_xattrs_equal(const struct file *a, const struct file *b)
+{
+    return TRUE;
+}
+#endif
 
 /**
  * file_contents_equal - Compare contents of two files for equality
@@ -454,8 +674,9 @@ static hl_bool file_may_link_to(const struct file *a, const struct file *b)
             (!opts.respect_time || a->st.st_mtime == b->st.st_mtime) &&
             (!opts.respect_name
              || strcmp(a->links->path + a->links->basename,
-                       b->links->path + b->links->basename) == 0)
-            && file_contents_equal(a, b));
+                       b->links->path + b->links->basename) == 0) &&
+            (!opts.respect_xattrs || file_xattrs_equal(a, b)) &&
+            file_contents_equal(a, b));
 }
 
 /**
@@ -726,6 +947,9 @@ static int help(const char *name)
     puts("  -o, --ignore-owner    Ignore owner changes");
     puts("  -t, --ignore-time     Ignore timestamps. Will retain the newer timestamp,");
     puts("                        unless -m or -M is given");
+#ifdef HAVE_XATTR
+    puts("  -X, --respect-xattrs  Respect extended attributes");
+#endif
     puts("  -m, --maximize        Maximize the hardlink count, remove the file with");
     puts("                        lowest hardlink cout");
     puts("  -M, --minimize        Reverse the meaning of -m");
@@ -791,7 +1015,7 @@ static int register_regex(struct regex_link **pregs, const char *regex)
  */
 static int parse_options(int argc, char *argv[])
 {
-    static const char optstr[] = "VhvnfpotcmMx:i:";
+    static const char optstr[] = "VhvnfpotXcmMx:i:";
 #ifdef HAVE_GETOPT_LONG
     static const struct option long_options[] = {
         {"version", no_argument, NULL, 'V'},
@@ -802,6 +1026,7 @@ static int parse_options(int argc, char *argv[])
         {"ignore-mode", no_argument, NULL, 'p'},
         {"ignore-owner", no_argument, NULL, 'o'},
         {"ignore-time", no_argument, NULL, 't'},
+        {"respect-xattrs", no_argument, NULL, 'X'},
         {"maximize", no_argument, NULL, 'm'},
         {"minimize", no_argument, NULL, 'M'},
         {"exclude", required_argument, NULL, 'x'},
@@ -815,6 +1040,7 @@ static int parse_options(int argc, char *argv[])
     opts.respect_mode = TRUE;
     opts.respect_owner = TRUE;
     opts.respect_time = TRUE;
+    opts.respect_xattrs = FALSE;
 
     while ((opt = getopt_long(argc, argv, optstr, long_options, NULL)) != -1) {
         switch (opt) {
@@ -826,6 +1052,9 @@ static int parse_options(int argc, char *argv[])
             break;
         case 't':
             opts.respect_time = FALSE;
+            break;
+        case 'X':
+            opts.respect_xattrs = TRUE;
             break;
         case 'm':
             opts.maximise = TRUE;
@@ -844,6 +1073,7 @@ static int parse_options(int argc, char *argv[])
             opts.respect_name = FALSE;
             opts.respect_owner = FALSE;
             opts.respect_time = FALSE;
+            opts.respect_xattrs = FALSE;
             break;
         case 'n':
             opts.dry_run = 1;

@@ -27,7 +27,7 @@ MYLD = $(CC) $(LDFLAGS) $(TARGET_ARCH)
 MYCC = $(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH)
 
 # Features to test for when creating configure.h
-FEATURES := GETOPT_LONG POSIX_FADVISE $(ENABLE)
+FEATURES := GETOPT_LONG POSIX_FADVISE XATTR $(ENABLE)
 
 all: hardlink
 

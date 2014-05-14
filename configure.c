@@ -61,6 +61,15 @@ int main(void)
     regcomp(&preg, "regex", 0);
 }
 
+#elif TEST_XATTR
+
+#include <sys/xattr.h>
+
+int main(void)
+{
+    llistxattr(0, 0, 0);
+}
+
 #else
 
 #error "Invalid feature"
