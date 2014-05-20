@@ -33,17 +33,22 @@ Link/compare files even if their owner (user and group) is different. It is not
 predictable
 .TP
 .B \-t or \-\-ignore\-time
-Link/compare files even if their time of modification is different. This will
-retain the newest timestamp, unless \-m or \-M is given.
+Link/compare files even if their time of modification is different. You almost
+always want this.
 .TP
 .B \-X or \-\-respect\-xattrs
 Only try to link files with the same extended attributes.
 .TP
 .B \-m or \-\-maximize
-Try to maximize the link count of the files.
+Among equal files, keep the file with the highest link count.
 .TP
 .B \-M or \-\-minimize
-Try to minimize the link count of the files.
+Among equal files, keep the file with the lowest link count.
+.TP
+.B \-O or \-\-keep\-oldest
+Among equal files, keep the oldest file (least recent modification time). By
+default, the newest file is kept. If \-\-maximize or \-\-minimize is specified,
+the link count has a higher precedence than the time of modification.
 .TP
 .B \-x or \-\-exclude
 A regular expression which excludes files from being compared and linked.

@@ -167,6 +167,7 @@ static struct statistics {
  * @respect_xattrs: Whether to respect extended attributes (default = FALSE)
  * @maximise: Chose the file with the highest link count as master
  * @minimise: Chose the file with the lowest link count as master
+ * @keep_oldest: Choose the file with oldest timestamp as master (default = FALSE)
  * @dry_run: Specifies whether hardlink should not link files (default = FALSE)
  */
 static struct options {
@@ -182,6 +183,7 @@ static struct options {
     unsigned int respect_xattrs:1;
     unsigned int maximise:1;
     unsigned int minimise:1;
+    unsigned int keep_oldest:1;
     unsigned int dry_run:1;
 } opts;
 
@@ -699,7 +701,8 @@ static int file_compare(const struct file *a, const struct file *b)
     if (res == 0 && opts.minimise)
         res = CMP(b->st.st_nlink, a->st.st_nlink);
     if (res == 0)
-        res = CMP(a->st.st_mtime, b->st.st_mtime);
+        res = opts.keep_oldest ? CMP(b->st.st_mtime, a->st.st_mtime)
+            : CMP(a->st.st_mtime, b->st.st_mtime);
     if (res == 0)
         res = CMP(b->st.st_ino, a->st.st_ino);
 
@@ -945,14 +948,15 @@ static int help(const char *name)
     puts("  -f, --respect-name    Filenames have to be identical");
     puts("  -p, --ignore-mode     Ignore changes of file mode");
     puts("  -o, --ignore-owner    Ignore owner changes");
-    puts("  -t, --ignore-time     Ignore timestamps. Will retain the newer timestamp,");
-    puts("                        unless -m or -M is given");
+    puts("  -t, --ignore-time     Ignore timestamps (when testing for equality)");
 #ifdef HAVE_XATTR
     puts("  -X, --respect-xattrs  Respect extended attributes");
 #endif
     puts("  -m, --maximize        Maximize the hardlink count, remove the file with");
     puts("                        lowest hardlink cout");
     puts("  -M, --minimize        Reverse the meaning of -m");
+    puts("  -O, --keep-oldest     Keep the oldest file of multiple equal files");
+    puts("                        (lower precedence than minimize/maximize)");
     puts("  -x REGEXP, --exclude=REGEXP");
     puts("                        Regular expression to exclude files");
     puts("  -i REGEXP, --include=REGEXP");
@@ -1015,7 +1019,7 @@ static int register_regex(struct regex_link **pregs, const char *regex)
  */
 static int parse_options(int argc, char *argv[])
 {
-    static const char optstr[] = "VhvnfpotXcmMx:i:";
+    static const char optstr[] = "VhvnfpotXcmMOx:i:";
 #ifdef HAVE_GETOPT_LONG
     static const struct option long_options[] = {
         {"version", no_argument, NULL, 'V'},
@@ -1029,6 +1033,7 @@ static int parse_options(int argc, char *argv[])
         {"respect-xattrs", no_argument, NULL, 'X'},
         {"maximize", no_argument, NULL, 'm'},
         {"minimize", no_argument, NULL, 'M'},
+        {"keep-oldest", no_argument, NULL, 'O'},
         {"exclude", required_argument, NULL, 'x'},
         {"include", required_argument, NULL, 'i'},
         {NULL, 0, NULL, 0}
@@ -1041,6 +1046,7 @@ static int parse_options(int argc, char *argv[])
     opts.respect_owner = TRUE;
     opts.respect_time = TRUE;
     opts.respect_xattrs = FALSE;
+    opts.keep_oldest = FALSE;
 
     while ((opt = getopt_long(argc, argv, optstr, long_options, NULL)) != -1) {
         switch (opt) {
@@ -1061,6 +1067,9 @@ static int parse_options(int argc, char *argv[])
             break;
         case 'M':
             opts.minimise = TRUE;
+            break;
+        case 'O':
+            opts.keep_oldest = TRUE;
             break;
         case 'f':
             opts.respect_name = TRUE;
