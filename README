@@ -4,13 +4,8 @@ hardlink is a tool which replaces multiple copies of a file with hardlinks.
 Inspiration came from http://code.google.com/p/hardlinkpy/, but no code has
 been used.
 
-I started from scratch because hardlinkpy lacks a consistent style and does
-not conform to PEP 8. Furthermore, it supports Python 1.5, which means no
-new functionality is used.
-
-My program requires at least Python 2.5, passes all known python checking
-tools (pylint,pychecker,pyflakes) without errors/warnings/information, and is
-compatible with Python 3.0 (after using 2to3).
+This version was originally written in Python as well, but performance issues
+on large data sets caused it to be rewritten in C.
 
 Installation
 ------------
