@@ -46,6 +46,7 @@
 #include <stdlib.h>             /* free(), realloc() */
 #include <string.h>             /* strcmp() and friends */
 #include <assert.h>             /* assert() */
+#include <ctype.h>              /* tolower() */
 
 /* Some boolean names for clarity */
 typedef enum hl_bool {
@@ -169,6 +170,7 @@ static struct statistics {
  * @minimise: Chose the file with the lowest link count as master
  * @keep_oldest: Choose the file with oldest timestamp as master (default = FALSE)
  * @dry_run: Specifies whether hardlink should not link files (default = FALSE)
+ * @min_size: Minimum size of files to consider. (default = 1 byte)
  */
 static struct options {
     struct regex_link {
@@ -185,6 +187,7 @@ static struct options {
     unsigned int minimise:1;
     unsigned int keep_oldest:1;
     unsigned int dry_run:1;
+    unsigned long long min_size;
 } opts;
 
 /*
@@ -814,8 +817,10 @@ static int inserter(const char *fpath, const struct stat *sb, int typeflag,
 
     stats.files++;
 
-    if (sb->st_size == 0)
+    if (sb->st_size < opts.min_size) {
+        jlog(JLOG_DEBUG1, "Skipped %s (smaller than configured size)", fpath);
         return 0;
+    }
 
     jlog(JLOG_DEBUG2, "Visiting %s (file %zu)", fpath, stats.files);
 
@@ -961,6 +966,9 @@ static int help(const char *name)
     puts("                        Regular expression to exclude files");
     puts("  -i REGEXP, --include=REGEXP");
     puts("                        Regular expression to include files/dirs");
+    puts("  -s <num>[K,M,G], --minimum-size=<num>[K,M,G]");
+    puts("                        Minimum size for files. Optional suffix");
+    puts("                        allows for using KiB, MiB, or GiB");
     puts("");
     puts("Compatibility options to Jakub Jelinek's hardlink:");
     puts("  -c                    Compare only file contents, same as -pot");
@@ -1019,7 +1027,7 @@ static int register_regex(struct regex_link **pregs, const char *regex)
  */
 static int parse_options(int argc, char *argv[])
 {
-    static const char optstr[] = "VhvnfpotXcmMOx:i:";
+    static const char optstr[] = "VhvnfpotXcmMOx:i:s:";
 #ifdef HAVE_GETOPT_LONG
     static const struct option long_options[] = {
         {"version", no_argument, NULL, 'V'},
@@ -1036,17 +1044,20 @@ static int parse_options(int argc, char *argv[])
         {"keep-oldest", no_argument, NULL, 'O'},
         {"exclude", required_argument, NULL, 'x'},
         {"include", required_argument, NULL, 'i'},
+        {"minimum-size", required_argument, NULL, 's'},
         {NULL, 0, NULL, 0}
     };
 #endif
 
     int opt;
+    char unit = '\0';
 
     opts.respect_mode = TRUE;
     opts.respect_owner = TRUE;
     opts.respect_time = TRUE;
     opts.respect_xattrs = FALSE;
     opts.keep_oldest = FALSE;
+    opts.min_size = 1;
 
     while ((opt = getopt_long(argc, argv, optstr, long_options, NULL)) != -1) {
         switch (opt) {
@@ -1098,6 +1109,30 @@ static int parse_options(int argc, char *argv[])
         case 'i':
             if (register_regex(&opts.include, optarg) != 0)
                 return 1;
+            break;
+        case 's':
+            if (sscanf(optarg, "%llu%c", &opts.min_size, &unit) < 1) {
+                jlog(JLOG_ERROR, "Invalid option given to -s: %s", optarg);
+                return 1;
+            }
+            switch (tolower(unit)) {
+            case '\0':
+                break;
+            case 't':
+                opts.min_size *= 1024;
+            case 'g':
+                opts.min_size *= 1024;
+            case 'm':
+                opts.min_size *= 1024;
+            case 'k':
+                opts.min_size *= 1024;
+                break;
+            default:
+                jlog(JLOG_ERROR, "Unknown unit indicator %c.", unit);
+                return 1;
+            }
+            jlog(JLOG_DEBUG1, "Using minimum size of %lld bytes.",
+                 opts.min_size);
             break;
         case '?':
             return 1;

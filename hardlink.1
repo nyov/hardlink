@@ -57,6 +57,11 @@ A regular expression which excludes files from being compared and linked.
 A regular expression to include files. If the option \-\-exclude has been given,
 this option re-includes files which would otherwise be excluded. If the option
 is used without \-\-exclude, only files matched by the pattern are included.
+.TP
+.B \-s or \-\-\minimum\-size
+The minimum size to consider. By default this is 1, so empty files will not
+be linked. An optional suffix of K,M,G,T may be provided, indicating that the
+file size is KiB,MiB,GiB,TiB.
 
 .SH ARGUMENTS
 .B hardlink
