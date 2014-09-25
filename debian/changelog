@@ -1,3 +1,20 @@
+hardlink (0.3.0) unstable; urgency=low
+
+  [ Julian Andres Klode ]
+  * New release, upload to unstable. Thanks to Tom Keel from Intel for the
+    xattr patches.
+  * Do not install a handler for SIGTERM
+  * Do not install a handler for SIGUSR2
+  * README: hardlink is no longer written in Python
+  * Support --minimum-size,-s option (Closes: #754187)
+  * debian/control: Build-Depend on libattr1-dev
+
+  [ Tom Keel ]
+  * hardlink: Handle extended attributes.
+  * hardlink: Add --keep-oldest option.
+
+ -- Julian Andres Klode <jak@debian.org>  Thu, 25 Sep 2014 14:26:22 +0200
+
 hardlink (0.3.0~rc2) experimental; urgency=high
 
   * Correctly handle SIGINT and SIGTERM during file comparisons. This fixes
