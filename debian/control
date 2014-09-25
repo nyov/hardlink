@@ -2,7 +2,7 @@ Source: hardlink
 Section: utils
 Priority: optional
 Maintainer: Julian Andres Klode <jak@debian.org>
-Build-Depends: debhelper (>= 9), pkg-config, libpcre3-dev
+Build-Depends: debhelper (>= 9), pkg-config, libpcre3-dev, libattr1-dev
 Standards-Version: 3.9.5
 Homepage: http://jak-linux.org/projects/hardlink/
 Vcs-Git: git://anonscm.debian.org/users/jak/hardlink.git
