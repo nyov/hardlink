@@ -8,6 +8,7 @@ hardlink (0.3.0) unstable; urgency=low
   * README: hardlink is no longer written in Python
   * Support --minimum-size,-s option (Closes: #754187)
   * debian/control: Build-Depend on libattr1-dev
+  * debian: Switch to 3.0 (native)
 
   [ Tom Keel ]
   * hardlink: Handle extended attributes.
