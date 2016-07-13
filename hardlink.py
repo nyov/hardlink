@@ -26,7 +26,7 @@ This program is partially compatible to http://code.google.com/p/hardlinkpy/,
 but some options have changed or are not available anymore.
 '''
 
-from __future__ import with_statement
+from __future__ import with_statement, print_function
 
 import os
 import re
@@ -75,7 +75,7 @@ class File(object):
     def same_content(self, other):
         '''Return whether to files have identical content'''
         if self.opts.verbose >= 2:
-            print 'Comparing', self.path, 'to', other.path
+            print('Comparing', self.path, 'to', other.path)
         self.linker.compared += 1
         try:
             with open(self.path, 'rb') as fp1:
@@ -88,9 +88,9 @@ class File(object):
                         if not b1:
                             return True
 
-        except EnvironmentError, exc:
-            print 'Error: Comparing %s to %s failed' % (self.path, other.path)
-            print '      ', exc
+        except EnvironmentError as exc:
+            print('Error: Comparing %s to %s failed' % (self.path, other.path))
+            print('      ', exc)
 
     def may_link_to(self, other):
         '''Returns True if the file may be linked to another one.
@@ -111,32 +111,32 @@ class File(object):
         '''Link the current file to another one'''
         backup = other.path + '.hardlink-%s' % os.getpid()
         if os.path.exists(backup):
-            print 'E: Backup file %s already exists, aborting.' % backup
+            print('E: Backup file %s already exists, aborting.' % backup)
             return
         try:
             if not self.opts.dry_run:
                 os.rename(other.path, backup)
-        except OSError, err:
-            print 'E: Renaming %s to %s failed - ' % (other.path, backup), err
+        except OSError as err:
+            print('E: Renaming %s to %s failed - ' % (other.path, backup), err)
             return
         try:
             if not self.opts.dry_run:
                 os.link(self.path, other.path)
-        except OSError, err:
-            print 'E: Linking %s to %s failed -' % (self.path, other.path), err
+        except OSError as err:
+            print('E: Linking %s to %s failed -' % (self.path, other.path), err)
             try:
                 if not self.opts.dry_run:
                     os.rename(backup, other.path)
-            except OSError, err:
-                print 'E: Can not restore %s from backup -' % other.path, err
+            except OSError as err:
+                print('E: Can not restore %s from backup -' % other.path, err)
         else:
             if not self.opts.dry_run:
                 os.unlink(backup)
             elif self.opts.verbose:
-                print '[DryRun]',
+                print('[DryRun]', end='')
             if self.opts.verbose:
-                print 'Linking %s to %s (-%s)' % (self.path, other.path,
-                                                  format(self.stat.st_size))
+                print('Linking %s to %s (-%s)' % (self.path, other.path,
+                                                  format(self.stat.st_size)))
             other.link_count = self.link_count = self.link_count + 1
             self.linker.linked += 1
             self.linker.saved += self.stat.st_size
@@ -173,12 +173,12 @@ class HardLink(object):
 
     def print_stats(self):
         '''Print the statistics at the end of the run'''
-        print 'Mode:    ', self.opts.dry_run and 'dry-run' or 'real'
-        print 'Files:   ', sum(len(files) for files in self.files.itervalues())
-        print 'Linked:  ', self.linked, 'files'
-        print 'Compared:', self.compared, 'files'
-        print 'Saved:   ', format(self.saved)
-        print 'Duration: %.2f seconds' % (time.time() - self.start)
+        print('Mode:    ', self.opts.dry_run and 'dry-run' or 'real')
+        print('Files:   ', sum(len(files) for files in self.files.itervalues()))
+        print('Linked:  ', self.linked, 'files')
+        print('Compared:', self.compared, 'files')
+        print('Saved:   ', format(self.saved))
+        print('Duration: %.2f seconds' % (time.time() - self.start))
 
     def divide_and_conquer(self):
         '''Divide and Conquer linking'''
@@ -220,8 +220,8 @@ class HardLink(object):
                         if mfile.isreg:
                             retfiles[mfile.hash].append(mfile)
                         del mfile
-                    except OSError, err:
-                        print 'OSError:', err
+                    except OSError as err:
+                        print('OSError:', err)
         return retfiles
 
 
@@ -232,23 +232,23 @@ def walk(path):
     return [(os.path.dirname(path), [], [os.path.basename(path)])]
 
 
-def format(bytes):
+def format(size):
     '''Format a size, given in bytes'''
-    bytes = float(bytes)
-    if bytes >= 1024**3:
-        return "%.2f GiB" % (bytes/1024**3)
-    elif bytes >= 1024**2:
-        return "%.2f MiB" % (bytes/1024**2)
-    elif bytes >= 1024:
-        return "%.2f KiB" % (bytes/1024)
+    size = float(size)
+    if size >= 1024**3:
+        return "%.2f GiB" % (size/1024**3)
+    elif size >= 1024**2:
+        return "%.2f MiB" % (size/1024**2)
+    elif size >= 1024:
+        return "%.2f KiB" % (size/1024)
     else:
-        return "%d bytes" % bytes
+        return "%d bytes" % size
 
 
 def parse_args():
     '''Parse the command-line options'''
     parser = OptionParser(usage='%prog [options] directory / file ...',
-                          version='hardlink 0.1.2')
+                          version='hardlink 0.1.3')
     parser.add_option('-v', '--verbose', action='count', default=0,
                       help='Increase verbosity (repeat for more verbosity)')
     parser.add_option('-n', '--dry-run', action='store_true',
@@ -278,7 +278,7 @@ def parse_args():
     # Parse the arguments
     opts, args = parser.parse_args()
     if not args:
-        print >> sys.stderr, 'Error: You must specify at least one directory'
+        print('Error: You must specify at least one directory', file=sys.stderr)
         sys.exit(1)
     # Compile the regular expressions, should speedup matching a bit.
     opts.exclude = tuple(re.compile(pat) for pat in opts.exclude)
