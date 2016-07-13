@@ -1,3 +1,9 @@
+hardlink (0.1.3) unstable; urgency=low
+
+  * Make python3 compatible
+
+ -- nyov <nyov@nexnode.net>  Wed, 13 Jul 2016 19:21:43 +0000
+
 hardlink (0.1.2) unstable; urgency=low
 
   * Support files on the command line (Closes: #608864)
