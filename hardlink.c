@@ -463,7 +463,7 @@ static int cmp_xattr_name_ptrs(const void *ptr1, const void *ptr2)
 
 /**
  * get_sorted_xattr_name_table - Create a sorted table of xattr names.
- * @names - table of concatentated, null-terminated xattr names
+ * @names - table of concatenated, null-terminated xattr names
  * @n - the number of names
  *
  * @Returns allocated table of pointers to the names, sorted alphabetically
@@ -1154,7 +1154,7 @@ static void to_be_called_atexit(void)
 }
 
 /**
- * sighandler - Signal hander, sets the global last_signal variable
+ * sighandler - Signal handler, sets the global last_signal variable
  * @i: The signal number
  */
 static void sighandler(int i)
